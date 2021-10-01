@@ -2,12 +2,12 @@ package com.collarmc.fabric.client.messaging;
 
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.MessageType;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 
 public interface ChatInterceptor {
     /**
-     *
-     * @param message
+     * @param message sent
      * @return true to cancel default handling
      */
     boolean onChatMessageSent(Text message);
@@ -18,5 +18,5 @@ public interface ChatInterceptor {
      * @param location of message
      * @return true to cancel default handling
      */
-    boolean onChatMessageReceived(PlayerEntity player, Text message, MessageType location);
+    boolean onChatMessageReceived(PlayerEntity player, MutableText message, MessageType location);
 }

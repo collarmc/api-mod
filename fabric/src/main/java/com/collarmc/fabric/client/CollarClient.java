@@ -24,13 +24,16 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.MutableText;
 import net.minecraft.util.Formatting;
+import org.jetbrains.annotations.NotNull;
 
+import javax.security.auth.login.Configuration;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Objects;
@@ -65,9 +68,6 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
     public void onInitializeClient() {
         // Set the minecraft instance
         mc = MinecraftClient.getInstance();
-
-        CHAT_SERVICE = new ChatService(mc);
-
         // Subscribe to events
         CollarFabric.events().subscribe(this);
 
@@ -77,35 +77,17 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
         friends = new Friends(mc, CollarFabric.events());
         messaging = new Messaging(mc, CollarFabric.events());
 
-        // Setup ticks
+        // Setup Collar
         Ticks ticks = new Ticks();
-
-        // Configure and create Collar
-        try {
-            COLLAR = Collar.create(new CollarConfiguration.Builder()
-                    .withEventBus(CollarFabric.events())
-                    .withHomeDirectory(mc.runDirectory)
-                    .withTicks(ticks)
-                    .withCollarServer()
-                    .withPlayerLocation(() -> mc.player == null ? Location.UNKNOWN : locationFrom(mc.player))
-                    .withEntitiesSupplier(() -> {
-                        Set<Entity> entities = new HashSet<>();
-                        if (mc.world != null) {
-                            mc.world.getEntities().forEach(entity -> entities.add(new Entity(entity.getId(), entity.getType().toString())));
-                        }
-                        return entities;
-                    })
-                    .withSession(() -> getMinecraftSession(mc))
-                    .build());
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not create collar", e);
-        }
+        CollarConfiguration configuration = configureCollar(ticks);
+        COLLAR = Collar.create(configuration);
+        CHAT_SERVICE = new ChatService(mc);
 
         // Setup chat services
         Messages messages = new Messages(mc, collar(), CHAT_SERVICE);
 
         // Register commands
-        Commands<FabricClientCommandSource> commands = new Commands<>(collar(), messages, mc, true);
+        Commands<FabricClientCommandSource> commands = new Commands<>(COLLAR, messages, mc, true);
         commands.register(ClientCommandManager.DISPATCHER);
 
         // Tick Collar
@@ -122,22 +104,61 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
         });
     }
 
-    private MinecraftSession getMinecraftSession(MinecraftClient mc) {
-        return MinecraftSession.mojang(
-                Objects.requireNonNull(mc.player).getUuid(),
-                mc.player.getEntityName(),
-                mc.player.getId(),
-                Objects.requireNonNull(mc.getCurrentServerEntry()).address,
-                mc.getSession().getAccessToken(),
-                null
-        );
+    private static boolean isDevelopmentMode() {
+        String devStr = System.getenv("COLLAR_DEV");
+        return Boolean.parseBoolean(devStr);
+    }
+
+    private static MinecraftSession getMinecraftSession(MinecraftClient mc) {
+        if (mc.player == null) {
+            throw new IllegalStateException("cannot create session");
+        }
+        ServerInfo currentServer = mc.getCurrentServerEntry();
+        if (currentServer == null || isDevelopmentMode()) {
+            return MinecraftSession.noJang(mc.player.getUuid(), mc.player.getEntityName(), mc.player.getId(), "localhost");
+        } else {
+            return MinecraftSession.mojang(
+                    Objects.requireNonNull(mc.player).getUuid(),
+                    mc.player.getEntityName(),
+                    mc.player.getId(),
+                    currentServer.address,
+                    mc.getSession().getAccessToken(),
+                    null
+            );
+        }
+    }
+
+    @NotNull
+    private CollarConfiguration configureCollar(Ticks ticks) {
+        CollarConfiguration.Builder builder = new CollarConfiguration.Builder()
+                .withEventBus(CollarFabric.events())
+                .withHomeDirectory(mc.runDirectory)
+                .withTicks(ticks)
+                .withPlayerLocation(() -> mc.player == null ? Location.UNKNOWN : locationFrom(mc.player))
+                .withEntitiesSupplier(() -> {
+                    Set<Entity> entities = new HashSet<>();
+                    if (mc.world != null) {
+                        mc.world.getEntities().forEach(entity -> entities.add(new Entity(entity.getId(), entity.getType().toString())));
+                    }
+                    return entities;
+                })
+                .withSession(() -> getMinecraftSession(mc));
+        if (isDevelopmentMode()) {
+            builder.withCollarServer("http://localhost:4000/");
+        } else {
+            builder.withCollarServer();
+        }
+        CollarConfiguration configuration;
+        try {
+            configuration = builder.build();
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not build Collar configuration", e);
+        }
+        return configuration;
     }
 
     @Subscribe
     public void onStateChanged(CollarStateChangedEvent event) {
-        if (mc.world == null) {
-            return;
-        }
         switch (event.state) {
             case CONNECTING:
                 displayInfoMessage("Collar connecting...");
@@ -155,7 +176,6 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
     public void onConfirmDeviceRegistration(ConfirmClientRegistrationEvent event) {
         displayStatusMessage("Collar registration required");
         displayMessage(rainbowText("Welcome to Collar!"));
-
         MutableText link = new LiteralText(event.approvalUrl).formatted(Formatting.GOLD);
         link.setStyle(link.getStyle().withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, event.approvalUrl)));
         displayMessage(new LiteralText("You'll need to associate this computer with your Collar account at ").append(link));

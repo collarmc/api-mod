@@ -33,7 +33,7 @@ public final class Messages implements WorldMixin, DisplayMixin {
         if (currentInterceptor != null) {
             chatService.remove(currentInterceptor);
         }
-        currentInterceptor = new GroupChatInterceptor(collar, group);
+        currentInterceptor = new GroupChatInterceptor(collar, group, mc);
         chatService.register(currentInterceptor);
         displayInfoMessage("Chatting with " + group.type.name + " \"" + group.name + "\"");
     }

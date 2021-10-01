@@ -7,6 +7,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.MessageType;
+import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -37,7 +38,7 @@ public class ChatService implements DisplayMixin, WorldMixin {
     public boolean onChatMessageReceived(PlayerEntity player, Text message, MessageType location) {
         boolean intercepted = false;
         for (ChatInterceptor interceptor : interceptors) {
-            if (interceptor.onChatMessageReceived(player, message, location)) {
+            if (interceptor.onChatMessageReceived(player, new LiteralText("").append(message), location)) {
                 intercepted = true;
             }
         }
