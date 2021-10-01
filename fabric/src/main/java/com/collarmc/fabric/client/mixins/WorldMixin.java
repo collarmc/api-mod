@@ -8,6 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+/**
+ * Helper mixin for {@link ClientWorld} operations
+ */
 public interface WorldMixin {
     /**
      * Find player by its gqme profile uuid

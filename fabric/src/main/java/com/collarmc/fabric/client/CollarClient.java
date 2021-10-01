@@ -39,9 +39,20 @@ import java.util.Set;
 @net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
 public class CollarClient implements ClientModInitializer, DisplayMixin, LocationMixin {
     private static Collar COLLAR;
+    private static ChatService CHAT_SERVICE;
 
+    /**
+     * @return collar client
+     */
     public static Collar collar() {
         return COLLAR;
+    }
+
+    /**
+     * @return chat service
+     */
+    public static ChatService getChatService() {
+        return CHAT_SERVICE;
     }
 
     private MinecraftClient mc;
@@ -54,6 +65,8 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
     public void onInitializeClient() {
         // Set the minecraft instance
         mc = MinecraftClient.getInstance();
+
+        CHAT_SERVICE = new ChatService(mc);
 
         // Subscribe to events
         CollarFabric.events().subscribe(this);
@@ -89,8 +102,7 @@ public class CollarClient implements ClientModInitializer, DisplayMixin, Locatio
         }
 
         // Setup chat services
-        ChatService chatService = new ChatService(mc);
-        Messages messages = new Messages(mc, collar(), chatService);
+        Messages messages = new Messages(mc, collar(), CHAT_SERVICE);
 
         // Register commands
         Commands<FabricClientCommandSource> commands = new Commands<>(collar(), messages, mc, true);

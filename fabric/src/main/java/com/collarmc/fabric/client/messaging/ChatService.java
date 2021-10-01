@@ -1,15 +1,20 @@
 package com.collarmc.fabric.client.messaging;
 
 import com.collarmc.fabric.client.mixins.DisplayMixin;
+import com.collarmc.fabric.client.mixins.WorldMixin;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.MessageType;
+import net.minecraft.text.Text;
 
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Handles sending and receiving chat messages
  */
-public class ChatService implements DisplayMixin {
+public class ChatService implements DisplayMixin, WorldMixin {
 
     private final CopyOnWriteArraySet<ChatInterceptor> interceptors = new CopyOnWriteArraySet<>();
 
@@ -19,13 +24,24 @@ public class ChatService implements DisplayMixin {
         this.mc = mc;
     }
 
-    /**
-     * @param message sent
-     * @return cancel event or not
-     */
-    public boolean onChatMessageSent(String message) {
-        interceptors.forEach(interceptor -> interceptor.onChatMessageSent(message));
-        return !interceptors.isEmpty();
+    public boolean onChatMessageSend(Text message) {
+        boolean intercepted = false;
+        for (ChatInterceptor interceptor : interceptors) {
+            if (interceptor.onChatMessageSent(message)) {
+                intercepted = true;
+            }
+        }
+        return intercepted;
+    }
+
+    public boolean onChatMessageReceived(PlayerEntity player, Text message, MessageType location) {
+        boolean intercepted = false;
+        for (ChatInterceptor interceptor : interceptors) {
+            if (interceptor.onChatMessageReceived(player, message, location)) {
+                intercepted = true;
+            }
+        }
+        return intercepted;
     }
 
     /**
@@ -48,7 +64,7 @@ public class ChatService implements DisplayMixin {
      * @param message to send
      */
     public void sendChatMessage(String recipient, String message) {
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        ClientPlayerEntity player = player();
         if (player == null) {
             displayErrorMessage(String.format("No player %s", recipient));
         } else {
@@ -56,16 +72,13 @@ public class ChatService implements DisplayMixin {
         }
     }
 
-    /**
-     * Send a message to yourself
-     * @param message to send
-     */
-    public void sendChatMessageToSelf(String message) {
-        player().sendChatMessage(message);
-    }
-
     @Override
     public ClientPlayerEntity player() {
         return MinecraftClient.getInstance().player;
+    }
+
+    @Override
+    public ClientWorld world() {
+        return mc.world;
     }
 }

@@ -29,6 +29,10 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
+    api group: 'com.collarmc', name: 'pounce', version: "${project.property('pounce.version')}"
+    api group: 'com.collarmc', name: 'client', version: "${project.property('collar.version')}", classifier: 'full'
+    implementation group: 'com.goterl', name: 'lazysodium-java', version: "5.1.1"
+
     shadow (group: 'com.collarmc', name: 'pounce', version: "${project.property('pounce.version')}") {
         transitive(false)
     }
@@ -67,15 +71,18 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 }
 
 shadowJar {
-    archiveClassifier.set('')
+//    archiveClassifier.set('')
     configurations = [project.configurations.shadow]
     enabled = true
-    dependencies {
-        include("com.collarmc:*")
-    }
+//    dependencies {
+//        include("com.collarmc:*")
+//    }
 }
 
-remapJar { dependsOn(shadowJar) }
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn(shadowJar)
+}
 
 jar {
     from "LICENSE"
