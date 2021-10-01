@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "collar-fabric",
+  "version": "${version}",
+  "name": "Collar Fabric",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "LGPL-3.0",
+  "icon": "assets/collar-fabric/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.collarmc.fabric.client.CollarClient"
+    ],
+    "main": [
+      "com.collarmc.fabric.CollarFabric"
+    ]
+  },
+  "mixins": [
+    "collar-fabric.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.11.7",
+    "fabric": "*",
+    "minecraft": "1.17.1"
+  }
+}
