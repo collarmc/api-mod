@@ -29,10 +29,10 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    implementation (group: 'com.collarmc', name: 'pounce', version: "${project.property('pounce.version')}") {
+    shadow (group: 'com.collarmc', name: 'pounce', version: "${project.property('pounce.version')}") {
         transitive(false)
     }
-    implementation (group: 'com.collarmc', name: 'client', version: "${project.property('collar.version')}", classifier: 'full') {
+    shadow (group: 'com.collarmc', name: 'client', version: "${project.property('collar.version')}", classifier: 'full') {
         transitive(false)
     }
 }
